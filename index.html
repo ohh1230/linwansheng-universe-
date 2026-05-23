@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>林晚笙 · 虚拟宇宙</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin:0; padding:0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto; background: #000; height: 100vh; overflow: hidden; }
+        
+        /* 页面容器 */
+        .page-container { width:100%; height:100vh; position: relative; }
+        .page { position: absolute; top:0; left:0; width: 100%; height: 100%; overflow-y: auto; background: #000; transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.645, 0.045, 0.355, 1); z-index: 1; }
+        .page.active { transform: translateX(0); z-index: 2; }
+        
+        /* 返回按钮 */
+        .back-btn { position: fixed; top: 15px; left: 15px; width: 38px; height: 38px; background: rgba(0,0,0,0.6); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; color: white; z-index: 100; backdrop-filter: blur(10px); cursor: pointer; }
+        
+        /* ===== 1. 控制中心 ===== */
+        .hub { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; min-height:100vh; background: #0a0a0a; }
+        .hub-avatar { width: 90px; height: 90px; background: linear-gradient(145deg, #cddcec, #8fa6c2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; border: 3px solid #1d9bf0; margin-bottom: 20px; }
+        .hub h1 { color: #e7e9ea; font-size: 22px; margin-bottom: 8px; }
+        .hub p { color: #71767b; font-size: 14px; margin-bottom: 30px; text-align: center; }
+        .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; width: 100%; max-width: 360px; }
+        .menu-item { background: #16181c; border: 1px solid #2f3336; border-radius: 14px; padding: 18px 10px; text-align: center; color: #e7e9ea; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .menu-item:active { transform: scale(0.97); background: #1d9bf0; }
+        .menu-icon { font-size: 24px; margin-bottom: 6px; }
+        
+        /* ===== 2. 锁屏 ===== */
+        .lockscreen { background: linear-gradient(160deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
+        .ls-time { font-size: 72px; font-weight: 200; }
+        .ls-date { font-size: 16px; opacity: 0.8; margin-bottom: 60px; }
+        .ls-notif { position: absolute; bottom: 60px; width: 90%; max-width: 360px; background: rgba(28, 28, 30, 0.9); backdrop-filter: blur(20px); border-radius: 14px; padding: 14px; display: flex; gap: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        .ls-notif-icon { width: 40px; height: 40px; background: linear-gradient(135deg, #1a1a1a, #2a2a2a); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 1px solid #c9a86c; color: #c9a86c; }
+        
+        /* ===== 3. X 主页 ===== */
+        .x-container { max-width: 600px; margin: 0 auto; background: #000; min-height:100vh; }
+        .x-header { position: sticky; top:0; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); padding: 12px 16px; border-bottom: 1px solid #2f3336; z-index: 10; }
+        .x-header h1 { color: #e7e9ea; font-size: 18px; }
+        .tweet { padding: 12px 16px; border-bottom: 1px solid #2f3336; }
+        .tweet-content { display: flex; gap: 12px; }
+        .tweet-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; flex-shrink: 0; }
+        .tweet-main { flex: 1; }
+        .tweet-name { color: #e7e9ea; font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 4px; }
+        .tweet-username { color: #71767b; font-size: 14px; margin-left: 4px; }
+        .tweet-text { color: #e7e9ea; font-size: 15px; line-height: 1.4; margin: 8px 0; white-space: pre-wrap; }
+        .tweet-actions { display: flex; justify-content: space-between; max-width: 400px; color: #71767b; font-size: 13px; margin-top: 10px; }
+        .tweet-actions span { cursor: pointer; padding: 4px; }
+        .liked { color: #f91880; }
+        .retweeted { color: #00ba7c; }
+        .tweet-img-placeholder { margin-top: 10px; background-color: #1f2a36; border-radius: 16px; height: 180px; width: 100%; display: flex; align-items: center; justify-content: center; color: #71767b; font-size: 14px; border: 1px solid #2f3336; }
+        .retweet-header { color: #71767b; font-size: 13px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .quote-tweet { border: 1px solid #2f3336; border-radius: 16px; padding: 12px; margin: 8px 0; background-color: #000; }
+        
+        /* 私信弹窗 */
+        .dm-modal { position: fixed; inset:0; background: rgba(0,0,0,0.8); z-index: 500; display: none; align-items: center; justify-content: center; }
+        .dm-modal.show { display: flex; }
+        .dm-window { width: 90%; max-width: 380px; height: 70vh; background: #000; border: 1px solid #2f3336; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; }
+        .dm-header { padding: 12px; border-bottom: 1px solid #2f3336; text-align: center; color: #e7e9ea; font-weight: bold; position: relative; }
+        .dm-close { position: absolute; right: 12px; top: 12px; color: #1d9bf0; cursor: pointer; }
+        .dm-messages { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .msg-bubble { max-width: 75%; padding: 10px 14px; border-radius: 18px; font-size: 14px; line-height: 1.4; }
+        .msg-received { background: #253341; align-self: flex-start; border-bottom-left-radius: 4px; }
+        .msg-sent { background: #1d9bf0; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .typing-indicator { font-size: 13px; color: #71767b; font-style: italic; padding: 4px 0; }
+        .dot { animation: blink 1.4s infinite both; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes blink { 0% { opacity: 0.2; } 20% { opacity: 1; } 100% { opacity: 0.2; } }
+        
+        /* ===== 4. 微博 ===== */
+        .weibo-container { max-width: 375px; margin: 0 auto; background: #f2f2f2; height: 100vh; }
+        .wb-profile { background: #fff; padding: 60px 16px 16px; position: relative; border-bottom: 8px solid #f2f2f2; }
+        .wb-avatar { width: 70px; height: 70px; background: linear-gradient(145deg, #b8c7dc, #7f95b0); border-radius: 50%; position: absolute; top: -35px; left: 16px; border: 3px solid white; display: flex; align-items: center; justify-content: center; font-size: 32px; color: #2c3e4e; }
+        .wb-name { font-size: 17px; font-weight: 700; color: #333; display: flex; align-items: center; gap: 6px; }
+        .wb-username { font-size: 13px; color: #939393; margin-top: 2px; }
+        .wb-stats { display: flex; gap: 20px; margin-top: 12px; font-size: 13px; color: #555; }
+        .wb-stats strong { color: #333; font-weight: 700; }
+        .wb-bio { font-size: 13px; color: #333; line-height: 1.4; margin-top: 12px; }
+        .follow-btn { position: absolute; top: 52px; right: 16px; background: #ff8200; color: white; padding: 4px 12px; border-radius: 14px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; outline: none; }
+        .follow-btn.following { background: #f2f2f2; color: #333; border: 1px solid #ddd; }
+        .wb-nav { display: flex; background: #fff; border-bottom: 1px solid #eee; position: relative; }
+        .wb-nav-item { flex: 1; text-align: center; padding: 12px 0; font-size: 15px; color: #939393; cursor: pointer; }
+        .wb-nav-item.active { color: #333; font-weight: 600; }
+        .wb-nav-indicator { position: absolute; bottom:0; left:0; width: 33.33%; height: 3px; background: #ff8200; border-radius: 3px; transition: transform 0.3s; }
+        .wb-sub-nav { background: #fafafa; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #939393; border-bottom: 1px solid #eee; }
+        .wb-card { background: #fff; padding: 12px 16px; border-bottom: 8px solid #f2f2f2; }
+        .wb-card-header { display: flex; gap: 10px; margin-bottom: 8px; }
+        .wb-mini-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; flex-shrink: 0; cursor: pointer; }
+        .wb-card-name { font-weight: 600; font-size: 14px; color: #333; display: flex; align-items: center; gap: 6px; }
+        .badge-orange { font-size: 10px; background: #fff0e5; color: #ff8200; padding: 2px 6px; border-radius: 12px; }
+        .wb-card-time { font-size: 12px; color: #939393; margin-top: 2px; }
+        .wb-card-text { font-size: 14px; color: #333; line-height: 1.45; margin: 8px 0; }
+        .wb-card-text.collapsed { max-height: 4.3em; overflow: hidden; position: relative; }
+        .wb-card-text.collapsed::after { content: ''; position: absolute; bottom:0; right:0; width: 30%; height: 1.45em; background: linear-gradient(to right, transparent, white); }
+        .expand-btn { color: #507daf; font-size: 13px; cursor: pointer; margin-top: 4px; display: none; }
+        .weibo-media { height: 170px; border-radius: 12px; margin: 10px 0; background-size: cover; background-position: center; }
+        .post-stats { display: flex; justify-content: space-around; padding: 10px 0 0; margin-top: 10px; border-top: 1px solid #f0f0f0; color: #939393; font-size: 13px; }
+        .post-stats span { cursor: pointer; padding: 4px 8px; border-radius: 4px; display: flex; align-items: center; }
+        .post-stats i { margin-right: 4px; }
+        .hot-tag { display: inline-block; background: #f3f3f3; font-size: 11px; padding: 4px 10px; border-radius: 20px; color: #ff8200; margin-top: 8px; font-weight: 500; }
+        .comment-sample { background: #f9f9f9; border-radius: 12px; padding: 10px 12px; margin-top: 12px; }
+        .comment-item { display: flex; gap: 8px; margin-bottom: 10px; font-size: 12px; }
+        .comment-avatar-small { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; cursor: pointer; }
+        .comment-name { font-weight: 600; color: #507daf; margin-right: 8px; }
+        .official-reply { background: #fff7e8; border-left: 3px solid #ff8200; padding: 8px 10px; border-radius: 8px; margin-top: 6px; }
+        .comment-filter { display: flex; gap: 12px; margin-top: 10px; font-size: 12px; color: #939393; }
+        .comment-filter span { cursor: pointer; }
+        .comment-filter span.active { color: #333; font-weight: 600; }
+        
+        /* ===== 5. 豆瓣小组 ===== */
+        .douban-page { background: #f5f5f5; padding: 80px 16px 20px; color: #333; }
+        .douban-page h2 { color: #007722; margin-bottom: 20px; }
+        .douban-post { background: #fff; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+        .douban-title { font-weight: bold; color: #007722; margin-bottom: 8px; }
+        .douban-text { font-size: 14px; color: #333; line-height: 1.5; }
+        .douban-reply { background: #f9f9f9; padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 13px; }
+        
+        /* ===== 6. 黑粉论坛 ===== */
+        .blackfan-page { background: #0a0a0a; padding: 80px 16px 20px; color: #a8a8a8; }
+        .blackfan-page h2 { color: #d9534f; margin-bottom: 20px; }
+        .blackfan-post { border: 1px solid #333; padding: 12px; border-radius: 4px; margin-bottom: 10px; }
+        .blackfan-title { color: #d9534f; font-weight: bold; margin-bottom: 8px; }
+        .blackfan-text { font-size: 13px; line-height: 1.5; }
+        
+        /* ===== 7. 工作室通稿 ===== */
+        .pr-page { background: #fff; padding: 80px 16px 20px; color: #333; }
+        .pr-page h2 { margin-bottom: 15px; }
+        .pr-text { font-size: 14px; line-height: 1.8; }
+        
+        /* ===== 8. 代言汇总表 ===== */
+        .endorsement-page { background: #fff; padding: 80px 16px 20px; color: #333; }
+        .endorsement-page h2 { color: #c9a86c; margin-bottom: 20px; text-align: center; }
+        .table-container { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        .table-title { background: #1a1a1a; color: #c9a86c; padding: 12px; font-size: 16px; font-weight: bold; text-align: center; }
+        .table-row { display: flex; border-bottom: 1px solid #eee; padding: 12px; align-items: center; }
+        .table-row:last-child { border-bottom: none; }
+        .table-label { width: 100px; font-weight: 600; color: #555; font-size: 13px; flex-shrink: 0; }
+        .table-value { flex: 1; font-size: 13px; color: #333; }
+        .status-active { color: #00a650; font-weight: bold; }
+        .status-pending { color: #ff8200; font-weight: bold; }
+        
+        /* ===== 9. 待播剧汇总表 ===== */
+        .upcoming-page { background: #f5f5f5; padding: 80px 16px 20px; color: #333; }
+        .upcoming-page h2 { color: #1d9bf0; margin-bottom: 20px; text-align: center; }
+        .upcoming-card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .upcoming-card h3 { font-size: 16px; color: #333; margin-bottom: 8px; }
+        .upcoming-card p { font-size: 13px; color: #666; line-height: 1.5; }
+        .role-tag { display: inline-block; background: #e8f4fd; color: #1d9bf0; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-top: 8px; }
+        
+        /* ===== 10. 金主备忘录 ===== */
+        .patron-page { background: #0a0a0a; padding: 80px 16px 20px; color: #c9a86c; font-family: "SimSun", serif; }
+        .patron-page h2 { color: #c9a86c; margin-bottom: 30px; }
+        .patron-diary { border-left: 3px solid #c9a86c; padding-left: 15px; margin-bottom: 25px; }
+        .patron-date { font-size: 12px; color: #777; margin-bottom: 8px; }
+        .patron-text { font-size: 15px; line-height: 1.8; }
+        
+        /* ===== 取关弹窗 ===== */
+        .modal-overlay { position: fixed; inset:0; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: center; justify-content: center; opacity:0; visibility: hidden; transition: opacity 0.3s; }
+        .modal-overlay.show { opacity: 1; visibility: visible; }
+        .modal-box { background: white; width: 80%; max-width: 280px; border-radius: 14px; padding: 20px; text-align: center; transform: translateY(20px); transition: transform 0.3s; }
+        .modal-overlay.show .modal-box { transform: translateY(0); }
+        .modal-actions { display: flex; border-top: 1px solid #eee; margin: 20px -20px -20px; }
+        .modal-actions button { flex: 1; padding: 12px; border: none; background: none; font-size: 16px; cursor: pointer; }
+        .modal-actions .cancel { color: #939393; border-right: 1px solid #eee; }
+        .modal-actions .confirm { color: #507daf; font-weight: 600; }
+        
+        /* Toast 提示 */
+        .toast-message { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px); background: rgba(0,0,0,0.75); color: white; padding: 10px 18px; border-radius: 20px; font-size: 13px; z-index: 200; opacity: 0; transition: all 0.3s ease; white-space: nowrap; }
+        .toast-message.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <!-- 1. 控制中心 -->
+        <div class="page active" id="controlCenter">
+            <div class="hub">
+                <div class="hub-avatar">🎬</div>
+                <h1>林晚笙 · 虚拟宇宙</h1>
+                <p>《雾锁申江》爆火后的第 7 天<br>选择你要进入的视角：</p>
+                <div class="menu-grid">
+                    <div class="menu-item" onclick="showPage('lockscreen')"><div class="menu-icon">📱</div> 锁屏通知</div>
+                    <div class="menu-item" onclick="showPage('xpage')"><div class="menu-icon">🐦</div> X 主页 (18条)</div>
+                    <div class="menu-item" onclick="showPage('weibopage')"><div class="menu-icon">🔥</div> 微博热议 (20条)</div>
+                    <div class="menu-item" onclick="showPage('doubanpage')"><div class="menu-icon">🥒</div> 豆瓣小组 (6帖)</div>
+                    <div class="menu-item" onclick="showPage('blackfanpage')"><div class="menu-icon">🗡️</div> 黑粉论坛</div>
+                    <div class="menu-item" onclick="showPage('prpage')"><div class="menu-icon">📰</div> 工作室通稿</div>
+                    <div class="menu-item" onclick="showPage('endorsementPage')"><div class="menu-icon">📋</div> 代言汇总表</div>
+                    <div class="menu-item" onclick="showPage('upcomingPage')"><div class="menu-icon">📺</div> 待播剧汇总</div>
+                    <div class="menu-item" onclick="showPage('patronpage')"><div class="menu-icon">🥃</div> 金主备忘录 (4条)</div>
+                </div>
+                <div style="color: #555; font-size: 12px; margin-top: 30px;">当前状态：全网热议中 | 辱追组已休战 | 沈砚洲已上线</div>
+            </div>
+        </div>
+        
+        <!-- 2. 锁屏通知 -->
+        <div class="page lockscreen" id="lockscreen">
+            <div class="back-btn" onclick="showPage('controlCenter')">←</div>
+            <div class="ls-time" id="lsTime">09:41</div>
+            <div class="ls-date" id="lsDate">2026年5月23日 星期六</div>
+            <div class="ls-notif" onclick="showPage('xpage')">
+                <div class="ls-notif-icon">沈</div>
+                <div>
+                    <div style="font-weight: 600; font-size: 13px; margin-bottom: 2px;">沈砚洲</div>
+                    <div style="font-size: 12px; color: #a0a0a0; line-height: 1.3;">《深渊之眼》的剧本，我让人送过去了。不用谢星野，那是我的投资。</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 3. X 主页 -->
+        <div class="page" id="xpage">
+            <div class="back-btn" onclick="showPage('controlCenter')">←</div>
+            <div class="x-container">
+                <div class="x-header"><h1>X · 主页</h1></div>
+                
+                <!-- 推文 1-12 (原有内容保持不变) -->
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #8fa6c2;">晚</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">林晚笙 ✨</span><span class="tweet-username">@LinWansheng · 4h</span></div>
+                            <div class="tweet-text">苏梦蝉，走了三个月了，但有时候我还想她。🌊🖤
+昨天收工早，一个人走到酒店天台，风吹过来时突然觉得她就站在我身后，三步远。</div>
+                            <div class="tweet-actions">
+                                <span onclick="like(this)"><i class="far fa-heart"></i> <b>15.8K</b></span>
+                                <span><i class="far fa-comment"></i> 1.2K</span>
+                                <span><i class="far fa-share-from-square"></i> 2.3K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #b0c4de;">星</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">陈星野 ⭐️</span><span class="tweet-username">@ChenXingYe_ · 昨天</span></div>
+                            <div class="tweet-text">有时候不需要台词，沉默才是最好的对手戏。最近翻以前的笔记，发现某人对顾深的解读至今还影响我选本子。就像你说的，有些角色一辈子都忘不掉。</div>
+                        </div>
+                    </div>
+                    <div class="tweet-content" style="margin-top: 10px; border-left: 3px solid #2f3336; padding-left: 12px;">
+                        <div class="tweet-main">
+                            <div class="tweet-text" style="color: #e7e9ea;">我能懂你。☔️ 不是苏梦蝉与顾深，但也是。角色馈赠的默契，比剧本更长久。谢谢陈老师，还在彼此身后。#雾锁申江后遗症</div>
+                            <div class="tweet-actions">
+                                <span onclick="triggerDM()"><i class="far fa-heart"></i> <b>48.3K</b></span>
+                                <span><i class="far fa-comment"></i> 3.4K</span>
+                                <span><i class="far fa-share-from-square"></i> 6.1K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #8fa6c2;">晚</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">林晚笙 ✨</span><span class="tweet-username">@LinWansheng · 昨天 19:23</span></div>
+                            <div class="tweet-text">今天拍苏晚在银行被客户羞辱的一场戏，连续被骂了七条才过。导演说“你眼神里委屈太多，苏晚是木掉的那种憋屈”。后来我放空自己，突然就对了。
+当一个银行经理，也好难啊…… emoji 职业生涯体验卡+1 💼📉 
+收工后吃了碗馄饨，暖回来了🥟 #她的城</div>
+                            <div class="tweet-actions">
+                                <span onclick="like(this)"><i class="far fa-heart"></i> <b>21.7K</b></span>
+                                <span><i class="far fa-comment"></i> 834</span>
+                                <span><i class="far fa-share-from-square"></i> 1.2K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #8fa6c2;">晚</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">林晚笙 ✨</span><span class="tweet-username">@LinWansheng · 5月28日</span></div>
+                            <div class="tweet-text">最近很多品牌来敲门，谢谢认可✨
+跟团队聊了很久，筛掉了几个单纯赚快钱的单子。现在想接的商务得像兰蔻那样，调性一致且能互相成就的。🎯 
+“选择权是挣来的，所以更要珍惜” —— 感谢每一个愿意等我的品牌 🤝</div>
+                            <div class="tweet-actions">
+                                <span onclick="like(this)"><i class="far fa-heart"></i> <b>37.4K</b></span>
+                                <span><i class="far fa-comment"></i> 1.8K</span>
+                                <span><i class="far fa-share-from-square"></i> 2.5K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #8fa6c2;">晚</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">林晚笙 ✨</span><span class="tweet-username">@LinWansheng · 2天前</span></div>
+                            <div class="tweet-text">谢谢记得殷离 🖤
+接这个角色时我想：如果她生来注定没有选择，那至少让她死得不遗憾。“笑完了才哭” 是我留给她的温柔。 // 有人懂比什么都值。</div>
+                            <div class="tweet-img-placeholder">🎬 [殷离剧照剪影] 九重天 · 魔界篇</div>
+                            <div class="tweet-actions">
+                                <span onclick="like(this)"><i class="far fa-heart"></i> <b>52.9K</b></span>
+                                <span><i class="far fa-comment"></i> 2.1K</span>
+                                <span><i class="far fa-share-from-square"></i> 4.8K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #8fa6c2;">晚</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">林晚笙 ✨</span><span class="tweet-username">@LinWansheng · 5月25日</span></div>
+                            <div class="tweet-text">有没有人杀青三个月后，还会梦见同组演员在对台词？梦到顾深说“这里不是你该来的地方”，我在梦里回他“我知道，但我来了”。
+醒来迷茫了好久，这到底是苏梦蝉的执念还是我的啊？(´-﹏-`；)   #演员后遗症 #雾锁申江</div>
+                            <div class="tweet-actions">
+                                <span onclick="like(this)"><i class="far fa-heart"></i> <b>77.5K</b></span>
+                                <span><i class="far fa-comment"></i> 5.2K</span>
+                                <span><i class="far fa-share-from-square"></i> 9.3K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #8fa6c2;">晚</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">林晚笙 ✨</span><span class="tweet-username">@LinWansheng · 6月12日</span></div>
+                            <div class="tweet-text">许念是我很喜欢的角色，冷、孤独但清醒。🍃
+等一等不是畏缩，是想用更好的状态去见她。好本子值得等待，我也值得更好的时机。 🤍 谢谢大家关心。(另外有人帮我看着本子呢，不急)</div>
+                            <div class="tweet-actions">
+                                <span onclick="like(this)"><i class="far fa-heart"></i> <b>28.1K</b></span>
+                                <span><i class="far fa-comment"></i> 1.6K</span>
+                                <span><i class="far fa-share-from-square"></i> 3.4K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #8fa6c2;">晚</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">林晚笙 ✨</span><span class="tweet-username">@LinWansheng · 2h</span></div>
+                            <div class="tweet-text">🎬 库存抖舞素材今日最后一条，下周继续拍新的！为了不让我头发塌，造型师最近疯狂给我定妆 (T＿T)
+但是！看到大家做的殷离二创，跳的累都值了！❤️ 
+保持清醒，保持“不降番”的决心。无论是角色还是人生，我都想赢✨
+最近拍《她的城》间隙还有在读《夜行人》剧本，希望今年也能交出一份满意的答卷。📖</div>
+                            <div class="tweet-actions">
+                                <span onclick="like(this)"><i class="far fa-heart"></i> <b>63.2K</b></span>
+                                <span><i class="far fa-comment"></i> 2.9K</span>
+                                <span><i class="far fa-share-from-square"></i> 5.7K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #8fa6c2;">晚</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">林晚笙 ✨</span><span class="tweet-username">@LinWansheng · 1h</span></div>
+                            <div class="tweet-text">《深渊之眼》开机第一天。许念这个角色，比我想象中要沉重。法医的冷静和内心的破碎，很难平衡。但我会努力。谢谢大家的祝福。🕵️‍♀️🔍</div>
+                            <div class="tweet-actions">
+                                <span onclick="like(this)"><i class="far fa-heart"></i> <b>89.2K</b></span>
+                                <span><i class="far fa-comment"></i> 4.1K</span>
+                                <span><i class="far fa-share-from-square"></i> 7.3K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #8fa6c2;">晚</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">林晚笙 ✨</span><span class="tweet-username">@LinWansheng · 刚刚</span></div>
+                            <div class="tweet-text">兰蔻全球官宣了！✨ 很荣幸成为品牌挚友。清醒肌肤，自在发光。希望我和品牌一样，都能在各自领域里坚定而纯粹。💄 #兰蔻 #林晚笙</div>
+                            <div class="tweet-actions">
+                                <span onclick="like(this)"><i class="far fa-heart"></i> <b>102.4K</b></span>
+                                <span><i class="far fa-comment"></i> 5.6K</span>
+                                <span><i class="far fa-share-from-square"></i> 12.8K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #b0c4de;">星</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">陈星野 ⭐️</span><span class="tweet-username">@ChenXingYe_ · 刚刚</span></div>
+                            <div class="tweet-text">恭喜兰蔻全球品牌挚友 @LinWansheng。你的努力配得上这份荣耀。期待《深渊之眼》，也期待你下一次的“苏梦蝉”。🌹</div>
+                            <div class="tweet-actions">
+                                <span onclick="like(this)"><i class="far fa-heart"></i> <b>156.7K</b></span>
+                                <span><i class="far fa-comment"></i> 8.9K</span>
+                                <span><i class="far fa-share-from-square"></i> 21.3K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #8fa6c2;">晚</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">林晚笙 ✨</span><span class="tweet-username">@LinWansheng · 刚刚</span></div>
+                            <div class="tweet-text">谢谢陈老师的祝福。🌹 路还长，我们一起走。也谢谢所有支持我的朋友，你们的每一份喜欢，都是我对抗不确定性的铠甲。🛡️✨</div>
+                            <div class="tweet-actions">
+                                <span onclick="like(this)"><i class="far fa-heart"></i> <b>201.5K</b></span>
+                                <span><i class="far fa-comment"></i> 12.4K</span>
+                                <span><i class="far fa-share-from-square"></i> 30.2K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 新增推文 13 -->
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #8fa6c2;">晚</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">林晚笙 ✨</span><span class="tweet-username">@LinWansheng · 刚刚</span></div>
+                            <div class="tweet-text">《夜行人》的剧本围读会结束了。角色很复杂，是一个在黑暗中寻找光的人。导演说“你会很辛苦”，我说“我不怕辛苦，怕的是没有灵魂”。📖🕯️</div>
+                            <div class="tweet-actions">
+                                <span onclick="like(this)"><i class="far fa-heart"></i> <b>245.8K</b></span>
+                                <span><i class="far fa-comment"></i> 15.3K</span>
+                                <span><i class="far fa-share-from-square"></i> 42.1K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 新增推文 14 -->
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #b0c4de;">星</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">陈星野 ⭐️</span><span class="tweet-username">@ChenXingYe_ · 刚刚</span></div>
+                            <div class="tweet-text">《夜行人》的制片人刚才找我了。如果档期能调开，希望能客串一角。为了陪某人一起在黑夜里找光。🌌</div>
+                            <div class="tweet-actions">
+                                <span onclick="like(this)"><i class="far fa-heart"></i> <b>312.4K</b></span>
+                                <span><i class="far fa-comment"></i> 22.7K</span>
+                                <span><i class="far fa-share-from-square"></i> 55.6K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 新增推文 15 -->
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #8fa6c2;">晚</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">林晚笙 ✨</span><span class="tweet-username">@LinWansheng · 刚刚</span></div>
+                            <div class="tweet-text">深夜收工，看到这条推送。心里很暖。谢谢星野老师，也谢谢所有愿意陪我冒险的人。好故事值得所有人全力以赴。🤝✨</div>
+                            <div class="tweet-actions">
+                                <span onclick="like(this)"><i class="far fa-heart"></i> <b>289.1K</b></span>
+                                <span><i class="far fa-comment"></i> 18.9K</span>
+                                <span><i class="far fa-share-from-square"></i> 48.3K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 新增推文 16 -->
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #8fa6c2;">晚</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">林晚笙 ✨</span><span class="tweet-username">@LinWansheng · 刚刚</span></div>
+                            <div class="tweet-text">今天试《夜行人》的造型，很颠覆。不再是温婉的苏晚，也不再是冷冽的许念。是一个会在泥潭里挣扎，但眼睛依然干净的人。💧🩹</div>
+                            <div class="tweet-actions">
+                                <span onclick="like(this)"><i class="far fa-heart"></i> <b>176.5K</b></span>
+                                <span><i class="far fa-comment"></i> 9.8K</span>
+                                <span><i class="far fa-share-from-square"></i> 22.4K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 新增推文 17 -->
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #8fa6c2;">晚</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">林晚笙 ✨</span><span class="tweet-username">@LinWansheng · 刚刚</span></div>
+                            <div class="tweet-text">收到一份匿名送来的旧书，《夜行人》原著。扉页写着：“愿你永远有打破笼子的勇气。” 字很好看，像刀锋一样锐利。不知道是谁送的。📖🔪</div>
+                            <div class="tweet-actions">
+                                <span onclick="like(this)"><i class="far fa-heart"></i> <b>356.7K</b></span>
+                                <span><i class="far fa-comment"></i> 28.3K</span>
+                                <span><i class="far fa-share-from-square"></i> 67.2K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 新增推文 18 -->
+                <div class="tweet">
+                    <div class="tweet-content">
+                        <div class="tweet-avatar" style="background: #8fa6c2;">晚</div>
+                        <div class="tweet-main">
+                            <div><span class="tweet-name">林晚笙 ✨</span><span class="tweet-username">@LinWansheng · 刚刚</span></div>
+                            <div class="tweet-text">不管送书的人是谁，谢谢你的祝福。我会带着这份勇气，走进《夜行人》的世界。也希望现实里的我，能有同样的勇气。🌑✨</div>
+                            <div class="tweet-actions">
+                                <span onclick="like(this)"><i class="far fa-heart"></i> <b>421.9K</b></span>
+                                <span><i class="far fa-comment"></i> 35.6K</span>
+                                <span><i class="far fa-share-from-square"></i> 89.4K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 私信弹窗 -->
+            <div class="dm-modal" id="dmModal">
+                <div class="dm-window">
+                    <div class="dm-header">沈砚洲 <span class="dm-close" onclick="closeDM()">✕</span></div>
+                    <div class="dm-messages" id="dmMessages">
+                        <div class="msg-bubble msg-received" style="background: #333;">《深渊之眼》的剧本，我让人送过去了。不用谢星野，那是我的投资。</div>
+                        <div class="msg-bubble msg-received" style="background: #333;">你越挣扎，这笼子就越华丽。我很期待你的新角色。</div>
+                        <div class="typing-indicator" id="typingIndicator" style="display:none;">正在输入 <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 4. 微博 -->
+        <div class="page" id="weibopage">
+            <div class="back-btn" onclick="showPage('controlCenter')">←</div>
+            <div class="weibo-container">
+                <div class="wb-profile">
+                    <div class="wb-avatar">晚</div>
+                    <div class="wb-name">林晚笙 <i class="fa-regular fa-circle-check" style="color:#507daf; font-size: 14px;"></i></div>
+                    <div class="wb-username">@LinWansheng_ · 演员</div>
+                    <div class="wb-stats">
+                        <div><strong>328.6万</strong> 粉丝</div>
+                        <div><strong>1,284</strong> 关注</div>
+                    </div>
+                    <div class="wb-bio">清醒倔强，角色即呼吸。不为降番妥协，只与好本子共鸣。</div>
+                    <button class="follow-btn following" id="weiboFollowBtn">已关注</button>
+                </div>
+                
+                <div class="wb-nav">
+                    <div class="wb-nav-item active" onclick="switchTab('weibo')">微博</div>
+                    <div class="wb-nav-item" onclick="switchTab('dynamic')">动态</div>
+                    <div class="wb-nav-item" onclick="switchTab('album')">相册</div>
+                    <div class="wb-nav-indicator"></div>
+                </div>
+                
+                <div class="wb-sub-nav">
+                    <div class="filter-left"><span>全部微博(20)</span></div>
+                    <div class="filter-right"><i class="fa-solid fa-sliders"></i> <i class="fa-solid fa-chevron-down"></i></div>
+                </div>
+                
+                <!-- 微博流 -->
+                <div id="weibo">
+                    <!-- 微博 1-15 (原有内容保持不变) -->
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cbd5e0;">娱</div>
+                            <div>
+                                <div class="wb-card-name">娱乐挖掘机</div>
+                                <div class="wb-card-time">刚刚</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">#沈砚洲 林晚笙 深渊之眼# 资本局中局！据悉沈氏资本已全资收购《深渊之眼》制作方。</div>
+                        <div class="hot-tag">#沈砚洲 林晚笙 资本做局#</div>
+                    </div>
+                    
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cddbec;">晚</div>
+                            <div>
+                                <div class="wb-card-name">林晚笙</div>
+                                <div class="wb-card-time">2小时前</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text collapsed" id="wbText1">看到一些关于投资和选择的讨论。我只想说：演员的路是自己选的，戏也是自己演的。《深渊之眼》的许念是我很喜欢的角色，仅此而已。</div>
+                        <div class="expand-btn" onclick="toggleExpand(this)">展开</div>
+                        <div class="hot-tag">#林晚笙 拒绝降番 硬气选本#</div>
+                    </div>
+                    
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cddbec;">晚</div>
+                            <div>
+                                <div class="wb-card-name">林晚笙 <span class="badge-orange">演技出众</span></div>
+                                <div class="wb-card-time">昨天 21:10</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text collapsed" id="wbText2">“殷离没有选择，但至少让她死得不遗憾。” 好多朋友问我那个笑怎么处理的，就是突然一瞬间觉得她太累了，笑完才是真正的委屈。</div>
+                        <div class="expand-btn" onclick="toggleExpand(this)">展开</div>
+                        <div class="weibo-media" style="background-image: linear-gradient(45deg,#1b2b3e,#2c4058); color:#bbb; display: flex;">🎬 殷离·九重天 | 魔界圣女终章</div>
+                        <div class="hot-tag">#殷离 笑完了才哭#</div>
+                    </div>
+                    
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cddbec;">晚</div>
+                            <div>
+                                <div class="wb-card-name">林晚笙</div>
+                                <div class="wb-card-time">5月10日 23:18</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">看到“辱追组”因为我演的殷离暂时休战一周，哭笑不得。谢谢你们苛刻又真诚的注视。</div>
+                        <div class="comment-sample">
+                            <div class="comment-item">
+                                <div class="comment-avatar-small" style="background: #cbd5e0;" onclick="showToast('该用户因夸赞林晚笙，已被踢出辱追组群聊。')">嘴</div>
+                                <div><span class="comment-name">嘴上说爱(辱追版)</span>：别高兴太早，下周继续骂驼背和工作室废物👊🏻</div>
+                            </div>
+                            <div class="official-reply"><span style="font-weight:600;">林晚笙</span>：感谢对殷离的喜欢，头发问题我进组一定让造型师多上心✊</div>
+                        </div>
+                        <div class="hot-tag">#辱追组 临时休战 殷离安息#</div>
+                    </div>
+                    
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cddbec;">晚</div>
+                            <div>
+                                <div class="wb-card-name">林晚笙 <span class="badge-orange">事业心</span></div>
+                                <div class="wb-card-time">5月20日 12:08</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">再回复一下选本原则：不降番，不演重复工具人，也不必为了流量接古偶。等《雾锁申江》播出再定下部戏，不盲目消耗热度。</div>
+                        <div class="hot-tag" style="background:#fbe9e0;">#林晚笙 拒绝降番 硬气选本#</div>
+                    </div>
+                    
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cddbec;">晚</div>
+                            <div>
+                                <div class="wb-card-name">林晚笙</div>
+                                <div class="wb-card-time">6月15日 14:30</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">《深渊之眼》开机第一天。许念这个角色，比我想象中要沉重。法医的冷静和内心的破碎，很难平衡。但我会努力。谢谢大家的祝福。🕵️‍♀️🔍</div>
+                    </div>
+                    
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cddbec;">晚</div>
+                            <div>
+                                <div class="wb-card-name">林晚笙</div>
+                                <div class="wb-card-time">6月15日 10:00</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">兰蔻全球官宣了！✨ 很荣幸成为品牌挚友。清醒肌肤，自在发光。希望我和品牌一样，都能在各自领域里坚定而纯粹。💄 #兰蔻 #林晚笙</div>
+                        <div class="weibo-media" style="background: linear-gradient(135deg, #f5e6e0, #fff); display: flex; align-items: center; justify-content: center; color: #1073b6; font-size: 24px;">LANCÔME × 林晚笙</div>
+                    </div>
+                    
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #b0c4de;">星</div>
+                            <div>
+                                <div class="wb-card-name">陈星野 ⭐️</div>
+                                <div class="wb-card-time">6月15日 10:05</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">恭喜兰蔻全球品牌挚友 @LinWansheng。你的努力配得上这份荣耀。期待《深渊之眼》，也期待你下一次的“苏梦蝉”。🌹</div>
+                    </div>
+                    
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cddbec;">晚</div>
+                            <div>
+                                <div class="wb-card-name">林晚笙</div>
+                                <div class="wb-card-time">6月15日 10:10</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">谢谢陈老师的祝福。🌹 路还长，我们一起走。也谢谢所有支持我的朋友，你们的每一份喜欢，都是我对抗不确定性的铠甲。🛡️✨</div>
+                    </div>
+                    
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cbd5e0;">工</div>
+                            <div>
+                                <div class="wb-card-name">林晚笙工作室</div>
+                                <div class="wb-card-time">6月14日 18:00</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">【严正声明】针对近日网络上关于林晚笙小姐“耍大牌”、“不配合宣传”的不实言论，工作室特此澄清：林晚笙小姐目前全身心投入《她的城》拍摄中，对于《深渊之眼》的合作，是基于对剧本质量的共同认可，所谓“资本做局”均为无稽之谈。请广大网友理性讨论，切勿轻信谣言。我们将保留追究法律责任的权利。</div>
+                    </div>
+                    
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cddbec;">晚</div>
+                            <div>
+                                <div class="wb-card-name">林晚笙</div>
+                                <div class="wb-card-time">6月13日 09:00</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">《她的城》杀青了。苏晚这个角色，给了我很多关于职场女性的思考。谢谢导演和编剧，也谢谢每一位陪伴苏晚走到最后的观众。下一个角色见。🎬 #她的城 #苏晚</div>
+                    </div>
+                    
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cbd5e0;">娱</div>
+                            <div>
+                                <div class="wb-card-name">娱乐圈指南</div>
+                                <div class="wb-card-time">6月12日 16:20</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">林晚笙《深渊之眼》一番地位稳固，沈氏资本保驾护航。业内传闻，沈砚洲亲自过问剧本，只为给林晚笙打造“大女主”形象。这资源，内娱独一份。</div>
+                    </div>
+                    
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cddbec;">晚</div>
+                            <div>
+                                <div class="wb-card-name">林晚笙</div>
+                                <div class="wb-card-time">6月10日 20:15</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">今天读了《夜行人》的剧本，很震撼。如果接下这个角色，可能会面临很大的挑战，但我不想错过。正在慎重考虑中。📖 #夜行人 #新剧本</div>
+                    </div>
+                    
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cbd5e0;">粉</div>
+                            <div>
+                                <div class="wb-card-name">笙笙不息后援会</div>
+                                <div class="wb-card-time">6月9日 12:00</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">【应援公告】为庆祝林晚笙小姐成为兰蔻品牌挚友，后援会将组织线下应援活动。具体安排请关注官方微博。感谢大家对晚笙的支持！❤️</div>
+                    </div>
+                    
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cbd5e0;">黑</div>
+                            <div>
+                                <div class="wb-card-name">内娱反黑组</div>
+                                <div class="wb-card-time">6月8日 22:30</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">林晚笙团队又开始买通稿了？“拒绝降番”、“硬气选本”？笑死人。兰蔻、MaxMara、珠宝，一边赚快钱一边立清高人设。建议查查她背后的金主。</div>
+                    </div>
+
+                    <!-- 新增微博 16 -->
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cddbec;">晚</div>
+                            <div>
+                                <div class="wb-card-name">林晚笙</div>
+                                <div class="wb-card-time">6月18日 11:20</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">正式官宣：《夜行人》已签合同。感谢导演和制片人的信任，也谢谢所有支持我挑战新角色的朋友们。这次的角色，会很不一样。📖🕯️ #夜行人 #林晚笙新剧</div>
+                        <div class="weibo-media" style="background-image: linear-gradient(45deg,#1a1a2e,#3a3a4e); display:flex; align-items:center; justify-content:center; color:#fff;">📽 《夜行人》官宣海报</div>
+                    </div>
+
+                    <!-- 新增微博 17 -->
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cbd5e0;">娱</div>
+                            <div>
+                                <div class="wb-card-name">圈内密探</div>
+                                <div class="wb-card-time">6月18日 11:25</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">重磅！林晚笙确认加盟《夜行人》，一番大女主。据悉男主人选也在接洽中，可能会是顶流。这部戏将是下半年最受瞩目的项目之一。沈氏资本再次护航。</div>
+                    </div>
+
+                    <!-- 新增微博 18 -->
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cddbec;">晚</div>
+                            <div>
+                                <div class="wb-card-name">林晚笙</div>
+                                <div class="wb-card-time">6月18日 12:00</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">今天开始《夜行人》的剧本围读。角色很沉重，但也很迷人。我会全力以赴，不负期待。也谢谢@陈星野 老师的鼓励，希望我们的合作能擦出不一样的火花。🌌</div>
+                        <div class="comment-sample">
+                            <div class="comment-item">
+                                <div class="comment-avatar-small" style="background: #cbd5e0;">笙</div>
+                                <div><span class="comment-name">笙笙不息</span>：姐姐加油！我们永远支持你挑战新角色！</div>
+                            </div>
+                            <div class="comment-item">
+                                <div class="comment-avatar-small" style="background: #cbd5e0;" onclick="showToast('该用户因恶意揣测，已被禁言。')">黑</div>
+                                <div><span class="comment-name">内娱反黑组</span>：又开始炒CP了？陈星野也是为了资源脸都不要了。</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 新增微博 19 -->
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cbd5e0;">工</div>
+                            <div>
+                                <div class="wb-card-name">林晚笙工作室</div>
+                                <div class="wb-card-time">6月18日 14:00</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">关于网传林晚笙小姐“耍大牌”一事，工作室已收集相关证据。部分营销号长期散布不实信息，恶意引导舆论。我们将于近日委托律师发布正式声明，并保留法律追诉权利。请大家不信谣不传谣。🛡️</div>
+                    </div>
+
+                    <!-- 新增微博 20 -->
+                    <div class="wb-card">
+                        <div class="wb-card-header">
+                            <div class="wb-mini-avatar" style="background: #cddbec;">晚</div>
+                            <div>
+                                <div class="wb-card-name">林晚笙</div>
+                                <div class="wb-card-time">6月18日 16:30</div>
+                            </div>
+                        </div>
+                        <div class="wb-card-text">收到一份匿名的《夜行人》原著。扉页写着：“愿你永远有打破笼子的勇气。” 谢谢送书的人，不管你是谁。我会带着这份勇气，走进角色，也走进生活。📖🔪 #夜行人 #林晚笙</div>
+                        <div class="comment-sample">
+                            <div class="comment-item">
+                                <div class="comment-avatar-small" style="background: #cbd5e0;">迷</div>
+                                <div><span class="comment-name">迷雾侦探</span>：这字迹好帅啊，感觉像是练过书法的人写的。会是陈星野吗？</div>
+                            </div>
+                            <div class="comment-item">
+                                <div class="comment-avatar-small" style="background: #cbd5e0;" onclick="showToast('该用户因恶意揣测，已被禁言。')">黑</div>
+                                <div><span class="comment-name">内娱反黑组</span>：装什么文艺？肯定是工作室自导自演的营销罢了。</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="dynamic" style="display:none; padding: 50px 16px; text-align: center; color: #999;">这里显示转发、评论和赞</div>
+                <div id="album" style="display:none; padding: 50px 16px; text-align: center; color: #999;">这里显示图片墙</div>
+            </div>
+        </div>
+        
+        <!-- 5. 豆瓣小组 -->
+        <div class="page douban-page" id="doubanpage">
+            <div class="back-btn" onclick="showPage('controlCenter')">←</div>
+            <h2>豆瓣 · 林晚笙讨论区</h2>
+            <div class="douban-post">
+                <div class="douban-title">【讨论】林晚笙是不是被资本硬抬？</div>
+                <div class="douban-text">看了两集《雾锁申江》，演技是有，但也没网上吹得那么神吧？兰蔻、MaxMara接连而来，这资源好得离谱。</div>
+                <div class="douban-reply"><strong>笙笙不息：</strong> 支持！求求她别去综艺假笑，保持神秘感，大花预备役。</div>
+            </div>
+            <div class="douban-post">
+                <div class="douban-title">【八瓜】林晚笙背后金主疑似地产大佬？</div>
+                <div class="douban-text">查了一下，她刚出道时坐过的豪车车牌号，跟某神秘富豪的座驾一样。所谓的“不降番”，不过是金主不想让她掉价罢了。</div>
+            </div>
+            <div class="douban-post">
+                <div class="douban-title">【分析】从殷离到苏晚，林晚笙的选角逻辑是什么？</div>
+                <div class="douban-text">我觉得她很聪明，专挑这种“破碎感”强的角色。殷离的绝望，苏晚的隐忍，都很吃演员的共情能力。但《深渊之眼》的法医角色，需要完全不同的冷静，不知道她能不能驾驭。</div>
+                <div class="douban-reply"><strong>剧透党：</strong> 刚看完片场路透，她的状态很对，眼神里有东西。</div>
+            </div>
+            <div class="douban-post">
+                <div class="douban-title">【闲聊】大家觉得林晚笙能红多久？</div>
+                <div class="douban-text">现在是一番大热，但看看之前的例子，很多爆剧演员都只是昙花一现。她接下来的路怎么走很重要。是继续接正剧，还是下凡接综艺捞金？</div>
+            </div>
+            <div class="douban-post">
+                <div class="douban-title">【争议】兰蔻选林晚笙是不是降级了？</div>
+                <div class="douban-text">兰蔻以前都是国际巨星，现在选了个内娱新人，还是靠资本硬抬上来的。感觉品牌调性有点掉。不过她长得确实符合兰蔻的审美，清冷挂的。</div>
+            </div>
+            <div class="douban-post">
+                <div class="douban-title">【技术贴】林晚笙在《雾锁申江》里的微表情分析</div>
+                <div class="douban-text">第12集，顾深说“这里不是你该来的地方”时，林晚笙的手指细微颤抖，然后迅速握拳。这个细节处理得太好了，把苏梦蝉那种“明知不可为而为之”的倔强演活了。这才是真正的演技，不是瞪眼吼叫。</div>
+                <div class="douban-reply"><strong>显微镜女孩：</strong> 是的！我也注意到了那个握拳的小动作，太戳人了。</div>
+            </div>
+        </div>
+        
+        <!-- 6. 黑粉论坛 -->
+        <div class="page blackfan-page" id="blackfanpage">
+            <div class="back-btn" onclick="showPage('controlCenter')">←</div>
+            <h2>黑粉地下论坛</h2>
+            <div class="blackfan-post">
+                <div class="blackfan-title">【热】林晚笙“殷离”演技也就那样</div>
+                <div class="blackfan-text">别被营销号忽悠了。那个“笑完了才哭”明明是剪辑卡点。还有人懂比什么都值。</div>
+            </div>
+            <div class="blackfan-post">
+                <div class="blackfan-title">【避雷】工作室通稿笑死人</div>
+                <div class="blackfan-text">一边赚快钱一边立清高人设。兰蔻、MaxMara、珠宝，她倒是挺忙的啊。</div>
+            </div>
+        </div>
+        
+        <!-- 7. 工作室通稿 -->
+        <div class="page pr-page" id="prpage">
+            <div class="back-btn" onclick="showPage('controlCenter')">←</div>
+            <h2>【严正声明】关于林晚笙小姐相关不实言论的说明</h2>
+            <div class="pr-text">
+                <p>针对近日网络上关于林晚笙小姐“耍大牌”、“不配合宣传”的不实言论，工作室特此澄清：</p>
+                <p>林晚笙小姐目前全身心投入《她的城》拍摄中，对于《深渊之眼》的合作，是基于对剧本质量的共同认可，所谓“资本做局”均为无稽之谈。</p>
+                <p>请广大网友理性讨论，切勿轻信谣言。我们将保留追究法律责任的权利。</p>
+            </div>
+        </div>
+        
+        <!-- 8. 代言汇总表 -->
+        <div class="page endorsement-page" id="endorsementPage">
+            <div class="back-btn" onclick="showPage('controlCenter')">←</div>
+            <h2>📋 商业代言汇总表</h2>
+            
+            <div class="table-container">
+                <div class="table-title">La Mer（海蓝之谜）—— 品牌大使</div>
+                <div class="table-row"><div class="table-label">品类</div><div class="table-value">高端护肤</div></div>
+                <div class="table-row"><div class="table-label">合作层级</div><div class="table-value">中国区品牌大使</div></div>
+                <div class="table-row"><div class="table-label">签约时间</div><div class="table-value">2025年1月（从挚友升级）</div></div>
+                <div class="table-row"><div class="table-label">合作内容</div><div class="table-value">年度2次大型活动 + 4次社交媒体推广</div></div>
+                <div class="table-row"><div class="table-label">状态</div><div class="table-value status-active">✅ 已签约，合作中</div></div>
+            </div>
+            
+            <div class="table-container">
+                <div class="table-title">Max Mara —— 亚太区品牌大使</div>
+                <div class="table-row"><div class="table-label">品类</div><div class="table-value">高端成衣</div></div>
+                <div class="table-row"><div class="table-label">合作层级</div><div class="table-value">亚太区品牌大使</div></div>
+                <div class="table-row"><div class="table-label">签约时间</div><div class="table-value">2025年2月</div></div>
+                <div class="table-row"><div class="table-label">亮点</div><div class="table-value">品牌最年轻的大使，曾首穿未发布秋冬款</div></div>
+                <div class="table-row"><div class="table-label">状态</div><div class="table-value status-active">✅ 已签约，合作中</div></div>
+            </div>
+            
+            <div class="table-container">
+                <div class="table-title">积家（Jaeger-LeCoultre）—— 品牌挚友</div>
+                <div class="table-row"><div class="table-label">品类</div><div class="table-value">高端腕表</div></div>
+                <div class="table-row"><div class="table-label">合作层级</div><div class="table-value">品牌挚友</div></div>
+                <div class="table-row"><div class="table-label">签约时间</div><div class="table-value">2025年3月</div></div>
+                <div class="table-row"><div class="table-label">状态</div><div class="table-value status-pending">✅ 已签约，物料待拍</div></div>
+            </div>
+            
+            <div class="table-container">
+                <div class="table-title">尚美（Chaumet）—— 品牌挚友</div>
+                <div class="table-row"><div class="table-label">品类</div><div class="table-value">高端珠宝</div></div>
+                <div class="table-row"><div class="table-label">合作层级</div><div class="table-value">品牌挚友（有望升大使）</div></div>
+                <div class="table-row"><div class="table-label">签约时间</div><div class="table-value">2025年4月</div></div>
+                <div class="table-row"><div class="table-label">亮点</div><div class="table-value">出席年度晚宴，佩戴千万级珠宝</div></div>
+                <div class="table-row"><div class="table-label">状态</div><div class="table-value status-active">✅ 已签约，合作中</div></div>
+            </div>
+            
+            <div class="table-container">
+                <div class="table-title">兰蔻（Lancôme）—— 品牌大使</div>
+                <div class="table-row"><div class="table-label">品类</div><div class="table-value">高端彩妆</div></div>
+                <div class="table-row"><div class="table-label">合作层级</div><div class="table-value">品牌大使</div></div>
+                <div class="table-row"><div class="table-label">签约时间</div><div class="table-value">2025年5月</div></div>
+                <div class="table-row"><div class="table-label">状态</div><div class="table-value status-active">✅ 已签约，合作中</div></div>
+            </div>
+        </div>
+        
+        <!-- 9. 待播剧汇总表 -->
+        <div class="page upcoming-page" id="upcomingPage">
+            <div class="back-btn" onclick="showPage('controlCenter')">←</div>
+            <h2>📺 待播剧汇总表</h2>
+            
+            <div class="upcoming-card">
+                <h3>《深渊之眼》</h3>
+                <p>饰演：许念（女一号）<br>类型：悬疑/犯罪<br>状态：拍摄中（预计2026年Q4播出）<br>看点：首次挑战法医角色，与陈星野继《雾锁申江》后二次合作。</p>
+                <div class="role-tag">一番大女主</div>
+            </div>
+            
+            <div class="upcoming-card">
+                <h3>《她的城》</h3>
+                <p>饰演：苏晚（女二号）<br>类型：都市/职场<br>状态：已杀青（预计2026年Q2播出）<br>看点：银行经理的隐忍与成长，现实题材。</p>
+                <div class="role-tag">二番女二</div>
+            </div>
+            
+            <div class="upcoming-card">
+                <h3>《夜行人》</h3>
+                <p>饰演：待定（洽谈中）<br>类型：年代/谍战<br>状态：剧本围读阶段<br>看点：制作班底强大，有望冲击奖项。</p>
+                <div class="role-tag">待定（一番）</div>
+            </div>
+        </div>
+        
+        <!-- 10. 金主备忘录 -->
+        <div class="page patron-page" id="patronpage">
+            <div class="back-btn" onclick="showPage('controlCenter')">←</div>
+            <h2>备忘录 · 2026.05.23</h2>
+            <div class="patron-diary">
+                <div class="patron-date">2026.05.23 · 机密</div>
+                <div class="patron-text">陈星野那只小狼，终于按捺不住露爪子了。“黄金笼子”？有趣的隐喻。但他忘了，真正的孤狼，哪怕被圈养在黄金笼子里，眼神也永远是向着旷野的。</div>
+            </div>
+            <div class="patron-diary">
+                <div class="patron-date">2026.05.23 · 后续</div>
+                <div class="patron-text">林晚笙看到那条推文时，手指停顿了三秒。她怕了，但又兴奋了。这种撕裂感，才是她最美的资产。我要让她知道，无论她逃到哪里，哪怕是陈星野身边，影子都在我脚下。</div>
+            </div>
+            <div class="patron-diary">
+                <div class="patron-date">2026.06.18 · 夜行人项目</div>
+                <div class="patron-text">她签了《夜行人》。很好。那个角色很苦，很累，很挣扎。正好磨一磨她身上那点不知天高地厚的傲气。陈星野想去客串？呵，我倒要看看，他能护她到几时。这盘棋，越来越有意思了。</div>
+            </div>
+            <div class="patron-diary">
+                <div class="patron-date">2026.06.18 · 匿名礼物</div>
+                <div class="patron-text">那本书是我送的。我想看看，当她以为那是别人的祝福时，她会露出什么样的表情。是感激，还是怀疑？不管怎样，她都会带着我的“勇气”走进那个角色。而我，会在镜头外，静静欣赏她的破碎与重生。</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 取关弹窗 -->
+    <div class="modal-overlay" id="unfollowModal">
+        <div class="modal-box">
+            <h3>取消关注</h3>
+            <p>确定不再陪林晚笙赌下一局吗？</p>
+            <div class="modal-actions">
+                <button class="cancel" onclick="closeUnfollowModal()">再等等</button>
+                <button class="confirm" onclick="confirmUnfollow()">狠心离开</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div class="toast-message" id="toastMessage"></div>
+
+    <script>
+        // 页面切换
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+        }
+        
+        // X 点赞
+        function like(el) {
+            const icon = el.querySelector('i');
+            const countEl = el.querySelector('b');
+            let count = parseFloat(countEl.textContent);
+            if (icon.classList.contains('fas')) {
+                icon.classList.replace('fas', 'far');
+                icon.classList.remove('liked');
+                count -= 0.1;
+            } else {
+                icon.classList.replace('far', 'fas');
+                icon.classList.add('liked');
+                count += 0.1;
+            }
+            countEl.textContent = count.toFixed(1) + 'K';
+        }
+        
+        // 触发私信
+        function triggerDM() {
+            const dm = document.getElementById('dmModal');
+            dm.classList.add('show');
+            const typing = document.getElementById('typingIndicator');
+            typing.style.display = 'block';
+            setTimeout(() => {
+                typing.style.display = 'none';
+            }, 3000);
+        }
+        
+        // 关闭私信
+        function closeDM() {
+            document.getElementById('dmModal').classList.remove('show');
+        }
+        
+        // 微博展开/收起
+        function toggleExpand(btn) {
+            const textDiv = btn.previousElementSibling;
+            if (textDiv.classList.contains('collapsed')) {
+                textDiv.classList.remove('collapsed');
+                btn.textContent = '收起';
+            } else {
+                textDiv.classList.add('collapsed');
+                btn.textContent = '展开';
+            }
+        }
+        
+        // 微博导航切换
+        function switchTab(tabId) {
+            document.getElementById('weibo').style.display = (tabId === 'weibo') ? 'block' : 'none';
+            document.getElementById('dynamic').style.display = (tabId === 'dynamic') ? 'block' : 'none';
+            document.getElementById('album').style.display = (tabId === 'album') ? 'block' : 'none';
+            
+            const items = document.querySelectorAll('.wb-nav-item');
+            const indicator = document.querySelector('.wb-nav-indicator');
+            if (tabId === 'weibo') { items[0].classList.add('active'); indicator.style.transform = 'translateX(0%)'; }
+            if (tabId === 'dynamic') { items[1].classList.add('active'); indicator.style.transform = 'translateX(100%)'; }
+            if (tabId === 'album') { items[2].classList.add('active'); indicator.style.transform = 'translateX(200%)'; }
+        }
+        
+        // 微博关注/取关
+        const weiboFollowBtn = document.getElementById('weiboFollowBtn');
+        const unfollowModal = document.getElementById('unfollowModal');
+        
+        weiboFollowBtn.addEventListener('click', function() {
+            if (this.textContent === '已关注') {
+                unfollowModal.classList.add('show');
+            } else {
+                this.textContent = '已关注';
+                this.classList.add('following');
+                showToast('关注成功');
+            }
+        });
+        
+        function closeUnfollowModal() {
+            unfollowModal.classList.remove('show');
+        }
+        
+        function confirmUnfollow() {
+            unfollowModal.classList.remove('show');
+            weiboFollowBtn.textContent = '关注';
+            weiboFollowBtn.classList.remove('following');
+            showToast('已取消关注');
+        }
+        
+        // 锁屏时间
+        function updateLockTime() {
+            const now = new Date();
+            document.getElementById('lsTime').textContent = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+            const weekdays = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+            document.getElementById('lsDate').textContent = now.getFullYear() + '年' + (now.getMonth()+1).toString().padStart(2,'0') + '月' + now.getDate().toString().padStart(2,'0') + '日 ' + weekdays[now.getDay()];
+        }
+        updateLockTime();
+        setInterval(updateLockTime, 60000);
+        
+        // Toast 提示
+        function showToast(message) {
+            const toast = document.getElementById('toastMessage');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
